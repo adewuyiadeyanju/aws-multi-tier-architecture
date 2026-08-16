@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: fieldops-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: fieldops
+      POSTGRES_USER: fieldopsadmin
+      POSTGRES_PASSWORD: local-development-password
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - fieldops-postgres-data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fieldopsadmin -d fieldops"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  fieldops-postgres-data:

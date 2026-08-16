@@ -3,13 +3,18 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.database import engine
+from app.database import Base, engine
+from app.routes import router
 
 
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
 )
+
+
+
+app.include_router(router)
 
 
 @app.get("/")
