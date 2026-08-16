@@ -102,3 +102,18 @@ output "application_autoscaling_group_name" {
   description = "Name of the application Auto Scaling Group."
   value       = aws_autoscaling_group.application.name
 }
+
+output "database_endpoint" {
+  description = "RDS PostgreSQL endpoint."
+  value       = aws_db_instance.fieldops.address
+}
+
+output "database_port" {
+  description = "RDS PostgreSQL port."
+  value       = aws_db_instance.fieldops.port
+}
+
+output "database_master_secret_arn" {
+  description = "ARN of the AWS-managed RDS master credentials secret."
+  value       = aws_db_instance.fieldops.master_user_secret[0].secret_arn
+}
