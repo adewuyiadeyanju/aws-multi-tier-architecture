@@ -117,3 +117,8 @@ output "database_master_secret_arn" {
   description = "ARN of the AWS-managed RDS master credentials secret."
   value       = aws_db_instance.fieldops.master_user_secret[0].secret_arn
 }
+
+output "ecr_repository_url" {
+  description = "URL of the FieldOps ECR repository."
+  value       = aws_ecr_repository.fieldops.repository_url
+}
