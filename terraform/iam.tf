@@ -22,6 +22,11 @@ resource "aws_iam_role" "application" {
   }
 }
 
+resource "aws_iam_role_policy_attachment" "ecr_read_only" {
+  role       = aws_iam_role.application.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
+
 resource "aws_iam_instance_profile" "application" {
   name = "fieldops-${var.environment}-app-profile"
   role = aws_iam_role.application.name

@@ -21,3 +21,9 @@ variable "database_username" {
   type        = string
   default     = "fieldopsadmin"
 }
+
+variable "application_image_tag" {
+  description = "Docker image tag to deploy for the FieldOps application."
+  type        = string
+  default     = "v1.0.0"
+}
