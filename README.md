@@ -6,11 +6,31 @@ A production-oriented multi-tier AWS architecture demonstrating scalable, secure
 
 🟢 **Core infrastructure deployed and validated**
 
-The current implementation successfully provisions and validates the core AWS application stack, including networking, load balancing, compute, container deployment, and PostgreSQL database connectivity.
+The core multi-tier AWS architecture has been successfully deployed using Terraform and validated end-to-end.
+
+The validated implementation includes:
+
+- Highly available VPC networking across multiple Availability Zones
+- Public and private subnet architecture
+- Internet-facing Application Load Balancer
+- EC2 Auto Scaling Group
+- Containerized FastAPI application
+- Amazon ECR
+- Private Amazon RDS PostgreSQL
+- AWS Secrets Manager
+- IAM-based EC2 access
+- AWS Systems Manager Session Manager
+- ALB health checks
+- Application health validation
+- Database connectivity validation
+
 
 ## Architecture
 
 The solution follows a multi-tier architecture:
+
+architecture\aws-multi-tier-architecture.png
+
 
 ```text
                          Internet
