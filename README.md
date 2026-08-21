@@ -325,4 +325,9 @@ Detailed documentation is available in the `docs/` directory:
 
 ## License
 
+> **Cost-control note:** The AWS environment was fully deployed and
+> validated end-to-end. The infrastructure is currently destroyed when not
+> required for demonstration in order to minimize ongoing AWS costs.
+> The environment can be recreated using Terraform.
+
 See [LICENSE](LICENSE).
