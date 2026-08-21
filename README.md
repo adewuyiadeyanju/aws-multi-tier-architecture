@@ -29,7 +29,7 @@ The validated implementation includes:
 
 The solution follows a multi-tier architecture:
 
-![Alt text](architecture\aws-multi-tier-architecture.png)
+![Architecture](architecture/aws-multi-tier-architecture.png)
 
 
 ```text
