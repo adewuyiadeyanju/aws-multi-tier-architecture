@@ -1,406 +1,227 @@
-# FieldOps AWS Multi-Tier Architecture
+# Architecture
 
 ## 1. Architecture Overview
 
-The proposed solution is a highly available, secure and scalable multi-tier AWS architecture designed to modernize the FieldOps operations application.
+This project implements a production-oriented AWS multi-tier architecture using Terraform.
 
-The architecture separates the application into distinct network and workload tiers and distributes application workloads across two AWS Availability Zones.
+The architecture separates the workload into distinct network and application tiers:
 
-The solution uses managed AWS services where appropriate to reduce operational overhead while maintaining control over the application and infrastructure layers.
+- Public networking for internet-facing components
+- Private application subnets for EC2 workloads
+- Private database subnets for PostgreSQL
+- Application Load Balancer for traffic distribution
+- EC2 Auto Scaling Group for application compute
+- Docker containers for application deployment
+- Amazon ECR for container image storage
+- Amazon RDS PostgreSQL for persistent data
+- AWS Secrets Manager for database credentials
+- AWS Systems Manager Session Manager for administrative access
+- NAT Gateway for controlled outbound connectivity
+- Amazon S3 VPC endpoint for private S3 access
 
-### High-Level Architecture
+The architecture is designed for high availability across multiple Availability Zones, with the application tier distributed across multiple EC2 instances behind an Application Load Balancer.
+
+The infrastructure is defined entirely as code using Terraform.
+
+---
+
+## 2. Architecture Diagram
+
+![AWS Multi-Tier Architecture](../architecture/aws-multi-tier-architecture.png)
+
+### Logical Architecture
 
 ```text
-                           INTERNET
-                               │
-                               ▼
-                          Route 53
-                               │
-                               ▼
-                        HTTPS / ACM
-                               │
-                               ▼
-                  ┌───────────────────────┐
-                  │ Application Load      │
-                  │      Balancer         │
-                  └───────────┬───────────┘
-                              │
-                 ┌────────────┴────────────┐
-                 │                         │
-                 ▼                         ▼
-          ┌─────────────┐           ┌─────────────┐
-          │    AZ-1     │           │    AZ-2     │
-          │             │           │             │
-          │ EC2 Instance│           │ EC2 Instance│
-          │ Application │           │ Application │
-          └──────┬──────┘           └──────┬──────┘
-                 │                         │
-                 └────────────┬────────────┘
-                              │
-                              ▼
-                       ┌─────────────┐
-                       │     RDS     │
-                       │ PostgreSQL  │
-                       └─────────────┘
+                         Internet
+                            |
+                            v
+                  +---------------------+
+                  | Internet Gateway     |
+                  +----------+----------+
+                             |
+                             v
+              +---------------------------+
+              |      Public Subnets       |
+              |                           |
+              | Application Load Balancer |
+              +-------------+-------------+
+                            |
+                     Target Group :8080
+                            |
+              +-------------+-------------+
+              |                           |
+              v                           v
+      +---------------+           +---------------+
+      | Private App   |           | Private App   |
+      | Subnet - AZ1  |           | Subnet - AZ2  |
+      |               |           |               |
+      | EC2 + Docker  |           | EC2 + Docker  |
+      | FastAPI       |           | FastAPI       |
+      +-------+-------+           +-------+-------+
+              |                           |
+              +-------------+-------------+
+                            |
+                            v
+                 +----------------------+
+                 | Private DB Subnets   |
+                 |                      |
+                 | RDS PostgreSQL       |
+                 +----------------------+
 
-                              │
-                              ▼
-                       ┌─────────────┐
-                       │     S3      │
-                       │ Object      │
-                       │ Storage     │
-                       └─────────────┘
+Private application outbound traffic
+                    |
+                    v
+              NAT Gateway
+                    |
+                    v
+             Internet Gateway
 
-                 ┌─────────────────────────┐
-                 │       CloudWatch        │
-                 │ Metrics | Logs | Alarms │
-                 └─────────────────────────┘
-```
+Private S3 access
+                    |
+                    v
+             S3 VPC Endpoint
 
----
 
-# 2. AWS Architecture Components
+### 2a. Security Group Traffic Model
 
-## 2.1 Amazon VPC
+Internet
+   |
+   | HTTP :80
+   v
+ALB Security Group
+   |
+   | TCP :8080
+   v
+Application Security Group
+   |
+   | TCP :5432
+   v
+Database Security Group
 
-A dedicated Amazon VPC provides the network boundary for the application.
 
-The VPC will use multiple Availability Zones to improve resilience.
 
-The network will contain separate subnet tiers for:
+## 3. AWS Services
 
-* Public infrastructure
-* Application workloads
-* Database workloads
+| Service | Purpose |
+|---|---|
+| Amazon VPC | Isolated network environment |
+| Application Load Balancer | Internet-facing application entry point and traffic distribution |
+| EC2 Auto Scaling Group | Highly available application compute |
+| Amazon ECR | Private container image registry |
+| Docker | Application container runtime |
+| Amazon RDS PostgreSQL | Managed relational database |
+| AWS Secrets Manager | Database credential storage |
+| AWS Systems Manager | Secure administrative access |
+| NAT Gateway | Controlled outbound connectivity |
+| S3 VPC Endpoint | Private S3 connectivity |
+| IAM | Identity and access management |
 
-The architecture will use route tables and network controls to restrict communication between tiers.
+## 4. Network Segmentation
 
----
+The architecture separates resources into three logical tiers:
 
-## 2.2 Availability Zones
+### Public Tier
 
-The solution will span two Availability Zones within a single AWS Region.
+The public tier contains the internet-facing Application Load Balancer.
 
-Application workloads will be distributed across both Availability Zones.
+### Application Tier
 
-This reduces dependency on a single Availability Zone and improves application resilience.
+The application tier contains EC2 instances managed by an Auto Scaling Group.
 
----
+The instances are deployed in private subnets and run the containerized FastAPI application.
 
-## 2.3 Public Subnets
+### Database Tier
 
-Public subnets will contain resources that require controlled internet connectivity.
+The database tier contains Amazon RDS PostgreSQL in private database subnets.
 
-The primary public-facing component will be the Application Load Balancer.
-
-Public subnets will have routes through the Internet Gateway.
-
-Application and database workloads will not be directly exposed to the public internet.
-
----
-
-## 2.4 Private Application Subnets
-
-Application workloads will run in private subnets.
-
-EC2 instances will not have public IP addresses.
-
-The application tier will receive traffic only from the Application Load Balancer.
-
-Outbound internet access required by application instances will be provided through controlled network egress.
-
----
-
-## 2.5 Private Database Subnets
-
-Amazon RDS PostgreSQL will run in private database subnets.
-
-The database will not have a public IP address.
-
-Database access will be restricted to the application tier using security-group rules.
+The database is not directly accessible from the Internet.
 
 ---
 
-# 3. Application Load Balancer
-
-An Application Load Balancer will provide the public entry point for the application.
-
-Responsibilities include:
-
-* HTTPS termination
-* Request distribution
-* Health checks
-* Routing traffic to healthy application instances
-* Supporting horizontal application scaling
-
-The ALB will be deployed across multiple Availability Zones.
-
-Only the ALB will accept public application traffic.
-
----
-
-# 4. EC2 Application Tier
-
-The application will run on Amazon EC2 instances managed through an Auto Scaling Group.
-
-The application tier will span two Availability Zones.
-
-The Auto Scaling Group will provide:
-
-* Horizontal scaling
-* Instance health monitoring
-* Automatic replacement of unhealthy instances
-* Capacity management
-
-EC2 instances will use IAM instance roles rather than embedding AWS access credentials in the application or operating system.
-
----
-
-# 5. Amazon RDS PostgreSQL
-
-Amazon RDS for PostgreSQL will provide relational database services for the application.
-
-RDS is selected instead of self-managed PostgreSQL on EC2 to reduce operational overhead associated with:
-
-* Database patching
-* Backups
-* Maintenance
-* Monitoring
-* Failover management
-
-The database will be deployed using private networking.
-
-The application security group will be granted access to the database security group on the PostgreSQL port.
-
-No direct internet access to the database will be permitted.
-
----
-
-# 6. Amazon S3
-
-Amazon S3 will provide durable object storage for:
-
-* Application documents
-* Uploaded files
-* Static assets where appropriate
-* Application artifacts
-* Other non-relational objects
-
-The S3 bucket will use appropriate security controls and encryption.
-
-Public access will be blocked unless a specific business requirement requires otherwise.
-
----
-
-# 7. Identity and Access Management
-
-AWS IAM will control access to AWS resources.
-
-The architecture will follow the principle of least privilege.
-
-Where workloads require AWS API access, IAM roles will be preferred over long-lived access keys.
-
-IAM permissions will be separated according to workload and operational responsibility.
-
----
-
-# 8. Security Architecture
-
-Security will be implemented using multiple layers of controls.
-
-### Network Security
-
-* VPC network isolation
-* Public/private subnet separation
-* Security Groups
-* Controlled routing
-* Private database networking
-
-### Identity Security
-
-* IAM roles
-* Least-privilege permissions
-* Separation of administrative and workload access
-
-### Data Security
-
-* Encryption at rest
-* Encryption in transit
-* Secure database connectivity
-* S3 Block Public Access
-
-### Application Security
-
-* HTTPS
-* Load-balancer health checks
-* Restricted application access
-* Restricted database access
-
----
-
-# 9. Monitoring and Observability
-
-Amazon CloudWatch will provide centralized monitoring.
-
-The solution will monitor:
-
-* EC2 instance health
-* CPU utilization
-* Application Load Balancer metrics
-* Request counts
-* Target health
-* Database metrics
-* Application logs
-* Infrastructure alarms
-
-CloudWatch alarms will be used to identify significant infrastructure conditions requiring attention.
-
----
-
-# 10. Infrastructure as Code
-
-Infrastructure will be provisioned using Terraform.
-
-Terraform will manage infrastructure including:
-
-* VPC
-* Subnets
-* Route tables
-* Internet Gateway
-* NAT Gateway
-* Security Groups
-* IAM roles
-* Application Load Balancer
-* EC2 resources
-* Auto Scaling
-* RDS
-* S3
-* CloudWatch resources
-
-The objective is to make the environment reproducible and version controlled.
-
----
-
-# 11. Deployment Architecture
-
-The application and infrastructure will use a Git-based development workflow.
-
-The intended deployment flow is:
+## 5. Application Traffic Flow
 
 ```text
-Developer
-    │
-    ▼
-Git Repository
-    │
-    ▼
-CI/CD Pipeline
-    │
-    ├── Application Tests
-    │
-    ├── Terraform Validation
-    │
-    ├── Terraform Plan
-    │
-    └── Deployment
-            │
-            ▼
-        AWS Environment
-```
+Internet
+   |
+   v
+Application Load Balancer
+   |
+   v
+Target Group :8080
+   |
+   +-------------------+
+   |                   |
+   v                   v
+EC2 / Docker       EC2 / Docker
+   |                   |
+   +---------+---------+
+             |
+             v
+       RDS PostgreSQL
 
-CI/CD implementation will be introduced after the initial infrastructure is operational.
 
----
+## 6. Key Architecture Decisions
 
-# 12. Key Architecture Decisions
+### Application instances in private subnets
 
-## Decision 1 — EC2 instead of ECS
+EC2 instances are deployed in private subnets to prevent direct
+internet exposure. Internet-facing traffic is terminated at the
+Application Load Balancer.
 
-EC2 is selected for the initial application architecture.
+### Application Load Balancer
 
-Reasons:
+The ALB provides a single public entry point and distributes traffic
+across multiple application instances.
 
-* Demonstrates operating-system-level cloud infrastructure.
-* Provides direct exposure to EC2 networking and IAM.
-* Demonstrates Auto Scaling.
-* Demonstrates load balancing.
-* Aligns directly with the AWS Solutions Architect role requirements.
-* Builds on existing Linux and infrastructure experience.
+### Auto Scaling Group
 
-Containerization and ECS will be considered as a future modernization step.
+The application tier uses an Auto Scaling Group to maintain
+availability and support horizontal scaling.
 
----
+### RDS PostgreSQL
 
-## Decision 2 — RDS instead of self-managed PostgreSQL
+Amazon RDS is used instead of self-managed PostgreSQL to reduce
+operational overhead associated with database administration,
+patching, backups, and infrastructure management.
 
-Amazon RDS is selected to reduce database operational overhead.
+### Secrets Manager
 
-The managed service provides capabilities for backups, maintenance and high availability while allowing the architecture to retain a relational database model.
+Database credentials are stored in AWS Secrets Manager rather than
+being embedded in Terraform configuration, application code, or
+container images.
 
----
+### Systems Manager Session Manager
 
-## Decision 3 — Multi-AZ architecture
+Session Manager provides administrative access without requiring
+public IP addresses or inbound SSH access to application instances.
 
-Application workloads will span two Availability Zones.
+## 7. Architecture Trade-offs
 
-This reduces the impact of a single Availability Zone failure and provides a foundation for high availability.
+### EC2 + Auto Scaling Group vs ECS/Fargate
 
----
+EC2 with an Auto Scaling Group was selected for this implementation to demonstrate:
 
-## Decision 4 — Private application and database tiers
+- EC2 lifecycle management
+- Launch Templates
+- User data/bootstrapping
+- Auto Scaling
+- Systems Manager
+- Docker runtime management
 
-Application and database workloads will not be directly exposed to the internet.
+ECS/Fargate would reduce infrastructure management overhead and is identified as a future evolution of the architecture.
 
-Only the Application Load Balancer will be internet-facing.
+### NAT Gateway
 
-This reduces the external attack surface and provides clear network security boundaries.
+A NAT Gateway provides controlled outbound connectivity for private application instances.
 
----
+The trade-off is cost. For a portfolio environment, NAT Gateway charges can be significant relative to the workload size.
 
-## Decision 5 — Terraform
+For this reason, the infrastructure is destroyed when not actively being demonstrated.
 
-Terraform will be used as the Infrastructure-as-Code platform.
+### RDS PostgreSQL
 
-This provides:
+RDS was selected instead of running PostgreSQL directly on EC2 because it provides managed database capabilities and reduces operational overhead.
 
-* Version-controlled infrastructure
-* Repeatable deployments
-* Infrastructure consistency
-* Reviewable changes
-* Automated provisioning
-* Reproducibility
+### Application Load Balancer
 
----
-
-# 13. Architecture Goals
-
-The architecture is designed around the following priorities:
-
-1. Security
-2. Reliability
-3. Scalability
-4. Operational Excellence
-5. Performance Efficiency
-6. Cost Optimization
-
-These priorities will be evaluated formally against the AWS Well-Architected Framework after the initial implementation.
-
----
-
-# 14. Future Architecture Evolution
-
-Future versions of the platform may evaluate:
-
-* Amazon ECS
-* AWS Fargate
-* Amazon CloudFront
-* AWS WAF
-* Amazon ElastiCache
-* AWS Lambda
-* Amazon API Gateway
-* Multi-region disaster recovery
-* Advanced observability
-* Automated security controls
-* Serverless components
-
-These services are intentionally not included in the initial architecture unless justified by a specific requirement.
+An ALB provides a stable public entry point while keeping the application instances private.

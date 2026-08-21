@@ -29,28 +29,9 @@ The validated implementation includes:
 
 The solution follows a multi-tier architecture:
 
-![Architecture](architecture/aws-multi-tier-architecture.png)
+![AWS Architecture](architecture/aws-multi-tier-architecture.png)
 
 
-```text
-                         Internet
-                            │
-                            ▼
-                  Application Load Balancer
-                            │
-                     Target Group :8080
-                            │
-                 ┌──────────┴──────────┐
-                 ▼                     ▼
-          EC2 Application 1     EC2 Application 2
-                 │                     │
-                 └──────────┬──────────┘
-                            │
-                       Docker / FastAPI
-                            │
-                            ▼
-                     RDS PostgreSQL
-```
 
 ### AWS Components
 
@@ -284,45 +265,63 @@ curl.exe http://<ALB-DNS-NAME>/health/database
 
 ## Project Roadmap
 
-### Completed
 
-* [x] AWS VPC and subnet architecture
-* [x] Public and private networking
-* [x] Application Load Balancer
-* [x] Auto Scaling Group
-* [x] EC2 application instances
-* [x] Docker-based application deployment
-* [x] Amazon ECR integration
-* [x] RDS PostgreSQL
-* [x] Secrets Manager integration
-* [x] IAM instance role
-* [x] Systems Manager access
-* [x] ALB health checks
-* [x] End-to-end application validation
-* [x] Database connectivity validation
+### Phase 1 — Core Architecture ✅
 
-### Next
+- AWS VPC and subnet architecture
+- Public and private networking
+- Internet Gateway
+- NAT Gateway
+- Application Load Balancer
+- Auto Scaling Group
+- EC2 application instances
+- Docker-based application deployment
+- Amazon ECR integration
+- RDS PostgreSQL
+- Secrets Manager integration
+- IAM instance role
+- Systems Manager access
+- ALB health checks
+- End-to-end application validation
+- Database connectivity validation
 
-* [ ] CloudWatch monitoring and dashboards
-* [ ] Application and infrastructure alarms
-* [ ] Centralized logging
-* [ ] CI/CD pipeline
-* [ ] Automated image deployment
-* [ ] HTTPS/TLS with ACM
-* [ ] Route 53 integration
-* [ ] Backup and disaster recovery validation
-* [ ] Cost analysis and optimization
-* [ ] Security hardening review
-* [ ] Load and resilience testing
+### Phase 2 — Production Hardening
+
+- CloudWatch monitoring and dashboards
+- Application and infrastructure alarms
+- Centralized logging
+- HTTPS/TLS with ACM
+- Route 53 integration
+- Security hardening review
+- Backup and disaster recovery validation
+- Load and resilience testing
+- Cost analysis and optimization
+
+### Phase 3 — DevOps Automation
+
+- CI/CD pipeline
+- Automated container image builds
+- Automated ECR image publishing
+- Automated application deployment
+- Terraform validation and deployment pipeline
+
+### Phase 4 — Advanced Architecture
+
+- Evaluate ECS/Fargate deployment
+- Evaluate blue/green or rolling deployments
+- Evaluate multi-region resilience
+- Evaluate database disaster recovery strategies
 
 ## Documentation
 
 Detailed documentation is available in the `docs/` directory:
 
-* `architecture.md` — architecture and AWS component design
-* `deployment.md` — deployment and operational procedures
-* `validation.md` — infrastructure and application validation
-* `troubleshooting.md` — common deployment and runtime issues
+- `architecture.md` — architecture and AWS component design
+- `deployment.md` — deployment and operational procedures
+- `validation.md` — infrastructure and application validation
+- `troubleshooting.md` — common deployment and runtime issues
+- `security.md` — security architecture and least-privilege controls
+- `cost-optimization.md` — AWS cost considerations and optimization strategies
 
 ## License
 
